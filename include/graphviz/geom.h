@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief geometric types and macros (e.g. points and boxes)
+ * @ingroup public_apis
  *
  * with application to, but no specific dependence on graphs
  */
@@ -56,7 +57,6 @@ typedef struct { pointf LL, UR; } boxf;
 #define DIST(p,q)		(sqrt(DIST2((p),(q))))
 
 #define POINTS_PER_INCH	72
-#define POINTS_PER_PC		((double)POINTS_PER_INCH / 6)
 #define POINTS_PER_CM		((double)POINTS_PER_INCH * 0.393700787)
 #define POINTS_PER_MM		((double)POINTS_PER_INCH * 0.0393700787)
 

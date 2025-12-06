@@ -1,6 +1,7 @@
 /**
  * @file
  * @brief graphs, nodes and edges info: Agraphinfo_t, Agnodeinfo_t and Agedgeinfo_t
+ * @ingroup public_apis
  */
 
 /*************************************************************************
@@ -19,7 +20,9 @@
 #define WITH_CGRAPH 1
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <assert.h>
 #include <signal.h>
 
@@ -110,8 +113,8 @@ extern "C" {
     typedef struct bezier {
 	pointf *list;
 	int size;
-	int sflag;
-	int eflag;
+	uint32_t sflag;
+	uint32_t eflag;
 	pointf sp;
 	pointf ep;
     } bezier;
@@ -136,7 +139,7 @@ extern "C" {
 	union {
 	    struct {
 		textspan_t *span;
-		short nspans;
+		size_t nspans;
 	    } txt;
 	    htmllabel_t *html;
 	} u;
@@ -158,16 +161,9 @@ extern "C" {
 
     typedef struct stroke_t {	/* information about a single stroke */
 	/* we would have called it a path if that term wasn't already used */
-	int nvertices;		/* number of points in the stroke */
-	int flags;		/* stroke style flags */
+	size_t nvertices; ///< number of points in the stroke
 	pointf *vertices;	/* array of vertex points */
     } stroke_t;
-
-/* flag definitions for stroke_t */
-#define STROKE_CLOSED (1 << 0)
-#define STROKE_FILLED (1 << 1)
-#define STROKE_PENDOWN (1 << 2)
-#define STROKE_VERTICES_ALLOCATED (1 << 3)
 
     typedef struct shape_functions {	/* read-only shape functions */
 	void (*initfn) (node_t *);	/* initializes shape from node u.shape_info structure */
@@ -196,11 +192,7 @@ extern "C" {
 	node_t **tail;
     } nodequeue;
 
-    typedef struct adjmatrix_t {
-	int nrows;
-	int ncols;
-	char *data;
-    } adjmatrix_t;
+    typedef struct adjmatrix_t adjmatrix_t;
 
     typedef struct rank_t {
 	int n;			/* number of nodes in this rank  */
@@ -250,12 +242,12 @@ extern "C" {
 
     typedef struct nlist_t {
 	node_t **list;
-	int size;
+	size_t size;
     } nlist_t;
 
     typedef struct elist {
 	edge_t **list;
-	int size;
+	size_t size;
     } elist;
 
 #define GUI_STATE_ACTIVE    (1<<0)
@@ -263,13 +255,23 @@ extern "C" {
 #define GUI_STATE_VISITED   (1<<2)
 #define GUI_STATE_DELETED   (1<<3)
 
-#define elist_fastapp(item,L) do {L.list[L.size++] = item; L.list[L.size] = NULL;} while(0)
-#define elist_append(item,L)  do {L.list = ALLOC(L.size + 2,L.list,edge_t*); L.list[L.size++] = item; L.list[L.size] = NULL;} while(0)
-#define alloc_elist(n,L)      do {L.size = 0; L.list = N_NEW(n + 1,edge_t*); } while (0)
+#define elist_append(item, L)                                                  \
+  do {                                                                         \
+    L.list = gv_recalloc(L.list, L.size + 1, L.size + 2, sizeof(edge_t *));    \
+    L.list[L.size++] = item;                                                   \
+    L.list[L.size] = NULL;                                                     \
+  } while (0)
+#define alloc_elist(n, L)                                                      \
+  do {                                                                         \
+    L.size = 0;                                                                \
+    L.list = gv_calloc(n + 1, sizeof(edge_t *));                               \
+  } while (0)
 #define free_list(L)          free(L.list)
 
 typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 
+/// @addtogroup cgraph_graph
+/// @{
     typedef struct Agraphinfo_t {
 	Agrec_t hdr;
 	/* to generate code */
@@ -317,15 +319,13 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 	/* connected components */
 	node_t *minset; /* set leaders */
 	node_t *maxset;	/* set leaders */
-	long n_nodes;
+	size_t n_nodes;
 	/* includes virtual */
 	int minrank;
 	int maxrank;
 
 	/* various flags */
 	bool has_flat_edges;
-	bool has_sourcerank;
-	bool has_sinkrank;
 	unsigned char	showboxes;
 	fontname_kind fontnames;		/* to override mangling in SVG */
 
@@ -366,8 +366,6 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define GD_has_labels(g) (((Agraphinfo_t*)AGDATA(g))->has_labels)
 #define GD_has_images(g) (((Agraphinfo_t*)AGDATA(g))->has_images)
 #define GD_has_flat_edges(g) (((Agraphinfo_t*)AGDATA(g))->has_flat_edges)
-#define GD_has_sourcerank(g)	(((Agraphinfo_t*)AGDATA(g))->has_sourcerank)
-#define GD_has_sinkrank(g)	(((Agraphinfo_t*)AGDATA(g))->has_sinkrank)
 #define GD_ht1(g) (((Agraphinfo_t*)AGDATA(g))->ht1)
 #define GD_ht2(g) (((Agraphinfo_t*)AGDATA(g))->ht2)
 #define GD_installed(g) (((Agraphinfo_t*)AGDATA(g))->installed)
@@ -393,7 +391,6 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define GD_neato_nlist(g) (((Agraphinfo_t*)AGDATA(g))->neato_nlist)
 #define GD_nlist(g) (((Agraphinfo_t*)AGDATA(g))->nlist)
 #define GD_nodesep(g) (((Agraphinfo_t*)AGDATA(g))->nodesep)
-#define GD_outleaf(g) (((Agraphinfo_t*)AGDATA(g))->outleaf)
 #define GD_rank(g) (((Agraphinfo_t*)AGDATA(g))->rank)
 #define GD_rankleader(g) (((Agraphinfo_t*)AGDATA(g))->rankleader)
 #define GD_ranksep(g) (((Agraphinfo_t*)AGDATA(g))->ranksep)
@@ -405,7 +402,10 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define GD_spring(g) (((Agraphinfo_t*)AGDATA(g))->spring)
 #define GD_sum_t(g) (((Agraphinfo_t*)AGDATA(g))->sum_t)
 #define GD_t(g) (((Agraphinfo_t*)AGDATA(g))->t)
+/// @}
 
+/// @addtogroup cgraph_node
+/// @{
     typedef struct Agnodeinfo_t {
 	Agrec_t hdr;
 	shape_desc *shape;
@@ -417,6 +417,8 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 	double ht;
 	double lw;
 	double rw;
+	double outline_width;  /* width in points with penwidth taken into account */
+	double outline_height; /* height in points with penwidth taken into account */
 	textlabel_t *label;
 	textlabel_t *xlabel;
 	void *alg;
@@ -456,8 +458,6 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 	/* for union-find and collapsing nodes */
 	int UF_size;
 	node_t *UF_parent;
-	node_t *inleaf;
-	node_t *outleaf;
 
 	/* for placing nodes */
 	int rank;
@@ -498,7 +498,6 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define ND_hops(n) (((Agnodeinfo_t*)AGDATA(n))->hops)
 #define ND_ht(n) (((Agnodeinfo_t*)AGDATA(n))->ht)
 #define ND_in(n) (((Agnodeinfo_t*)AGDATA(n))->in)
-#define ND_inleaf(n) (((Agnodeinfo_t*)AGDATA(n))->inleaf)
 #define ND_label(n) (((Agnodeinfo_t*)AGDATA(n))->label)
 #define ND_xlabel(n) (((Agnodeinfo_t*)AGDATA(n))->xlabel)
 #define ND_lim(n) (((Agnodeinfo_t*)AGDATA(n))->lim)
@@ -513,7 +512,8 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define ND_order(n) (((Agnodeinfo_t*)AGDATA(n))->order)
 #define ND_other(n) (((Agnodeinfo_t*)AGDATA(n))->other)
 #define ND_out(n) (((Agnodeinfo_t*)AGDATA(n))->out)
-#define ND_outleaf(n) (((Agnodeinfo_t*)AGDATA(n))->outleaf)
+#define ND_outline_width(n) (((Agnodeinfo_t*)AGDATA(n))->outline_width)
+#define ND_outline_height(n) (((Agnodeinfo_t*)AGDATA(n))->outline_height)
 #define ND_par(n) (((Agnodeinfo_t*)AGDATA(n))->par)
 #define ND_pinned(n) (((Agnodeinfo_t*)AGDATA(n))->pinned)
 #define ND_pos(n) (((Agnodeinfo_t*)AGDATA(n))->pos)
@@ -535,7 +535,10 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define ND_width(n) (((Agnodeinfo_t*)AGDATA(n))->width)
 #define ND_xsize(n) (ND_lw(n)+ND_rw(n))
 #define ND_ysize(n) (ND_ht(n))
+/// @}
 
+/// @addtogroup cgraph_edge
+/// @{
     typedef struct Agedgeinfo_t {
 	Agrec_t hdr;
 	splines *spl;
@@ -566,7 +569,7 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 	int cutvalue;
 	int tree_index;
 	short count;
-	unsigned short minlen;
+	int minlen;
 	edge_t *to_virt;
 #endif
     } Agedgeinfo_t;
@@ -597,13 +600,19 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define ED_xpenalty(e) (((Agedgeinfo_t*)AGDATA(e))->xpenalty)
 #define ED_dist(e) (((Agedgeinfo_t*)AGDATA(e))->dist)
 #define ED_weight(e) (((Agedgeinfo_t*)AGDATA(e))->weight)
+/// @}
 
 #define ag_xget(x,a) agxget(x,a)
 #define SET_RANKDIR(g,rd) (GD_rankdir2(g) = rd)
+/// @ingroup cgraph_edge
 #define agfindedge(g,t,h) (agedge(g,t,h,NULL,0))
+/// @ingroup cgraph_node
 #define agfindnode(g,n) (agnode(g,n,0))
+/// @ingroup cgraph_graph
 #define agfindgraphattr(g,a) (agattr(g,AGRAPH,a,NULL))
+/// @ingroup cgraph_node
 #define agfindnodeattr(g,a) (agattr(g,AGNODE,a,NULL))
+/// @ingroup cgraph_edge
 #define agfindedgeattr(g,a) (agattr(g,AGEDGE,a,NULL))
 
     typedef struct {
@@ -613,3 +622,4 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #ifdef __cplusplus
 }
 #endif
+/// @defgroup public_apis Graphviz public APIs
