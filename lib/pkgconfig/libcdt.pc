@@ -5,6 +5,6 @@ includedir=C:/Program Files/Graphviz/include
 
 Name: libcdt
 Description: Container DataType library
-Version: 14.0.0
+Version: 14.0.5
 Libs: -L${libdir} -lcdt
 Cflags: -I${includedir} -I${includedir}/graphviz
