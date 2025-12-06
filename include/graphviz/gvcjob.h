@@ -5,7 +5,7 @@
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * https://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors: Details at https://graphviz.org
  *************************************************************************/
@@ -21,6 +21,7 @@ extern "C" {
 #include "gvcommon.h"
 #include "color.h"
 #include <stdbool.h>
+#include <stddef.h>
 
 #define ARRAY_SIZE(A) (sizeof(A)/sizeof(A[0]))
 
@@ -38,7 +39,6 @@ extern "C" {
 
 #define PENWIDTH_NORMAL 1.
 #define PENWIDTH_BOLD 2.
-    typedef enum { GVATTR_STRING, GVATTR_BOOL, GVATTR_COLOR } gvattr_t;
 
 /* The -T output formats listed below are examples only, they are not definitive or inclusive,
  other outputs may use the flags now, or in the future 
@@ -143,12 +143,6 @@ extern "C" {
 	int id;
 	const char *type;
     } gvplugin_active_loadimage_t;
-
-    typedef struct gv_argvlist_s {
-	char **argv;
-	int argc;
-	int alloc;
-    } gv_argvlist_t;
     
     typedef struct gvdevice_callbacks_s {
 	void (*refresh) (GVJ_t * job);
@@ -246,9 +240,9 @@ extern "C" {
 	pointf *url_map_p;
 
 	/* additional mapped regions for edges */
-	int url_bsplinemap_poly_n;      /* number of polygons in url bspline map
+	size_t url_bsplinemap_poly_n;      /* number of polygons in url bspline map
 					 if GVRENDER_DOES_MAPS && GVRENDER_DOES_MAP_BSPLINES */
-	int *url_bsplinemap_n;          /* array of url_bsplinemap_poly_n ints 
+	size_t *url_bsplinemap_n;          /* array of url_bsplinemap_poly_n ints 
 					 of number of points in each polygon */
 	pointf *url_bsplinemap_p;       /* all the polygon points */
 
@@ -355,16 +349,12 @@ extern "C" {
 					/* (e.g. button 1 clicked on current obj) */
 	char *active_tooltip;		/* tooltip of active object - or NULL */
 	char *selected_href;		/* href of selected object - or NULL */
-	gv_argvlist_t selected_obj_type_name; /* (e.g. "edge" "node3" "e" "->" "node5" "") */
-	gv_argvlist_t selected_obj_attributes; /* attribute triplets: name, value, type */
-				/* e.g. "color", "red", GVATTR_COLOR,
-					"style", "filled", GVATTR_BOOL, */
 
 	void *window;		/* display-specific data for gvrender plugin */
 
         /* keybindings for keyboard events */
 	gvevent_key_binding_t *keybindings;
-	int numkeys;
+	size_t numkeys;
 	void *keycodes;
     };
 
