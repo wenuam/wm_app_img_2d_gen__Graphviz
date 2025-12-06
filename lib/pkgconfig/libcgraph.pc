@@ -5,6 +5,6 @@ includedir=C:/Program Files/Graphviz/include/graphviz
 
 Name: libcgraph
 Description: Graph library (file i/o, dot language parsing, graph, subgraph, node, edge, attribute, data structure manipulation)
-Version: 9.0.0
+Version: 10.0.1
 Libs: -L${libdir} -lcgraph -lcdt
 Cflags: -I${includedir}

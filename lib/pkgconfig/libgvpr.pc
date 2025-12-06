@@ -5,7 +5,7 @@ includedir=C:/Program Files/Graphviz/include/graphviz
 
 Name: libgvpr
 Description: The GVPR library
-Version: 9.0.0
+Version: 10.0.1
 Libs: -L${libdir} -lgvpr -lcgraph -lcdt
 Cflags: -I${includedir}
 
