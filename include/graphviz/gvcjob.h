@@ -1,3 +1,5 @@
+/// @file
+/// @ingroup gvc_api
 /*************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
  * All rights reserved. This program and the accompanying materials
@@ -61,7 +63,6 @@ extern "C" {
  GVRENDER_DOES_TRANSFORM	device uses scale, translate, rotate to do its own
  				coordinate transformations, otherwise coordinates 
   				are pre-transformed			
- GVRENDER_DOES_ARROWS		renderer has its own idea of arrow shapes (deprecated) 
  GVRENDER_DOES_LABELS		basically, maps don't need labels	
  GVRENDER_DOES_MAPS		renderer encodes mapping information for mouse events -Tcmapx -Tsvg 
  GVRENDER_DOES_MAP_RECTANGLE	supports a 2 coord rectngle optimization 
@@ -92,7 +93,6 @@ extern "C" {
 #define GVDEVICE_NO_WRITER (1<<11)
 #define GVRENDER_Y_GOES_DOWN (1<<12)
 #define GVRENDER_DOES_TRANSFORM (1<<13)
-#define GVRENDER_DOES_ARROWS (1<<14)
 #define GVRENDER_DOES_LABELS (1<<15)
 #define GVRENDER_DOES_MAPS (1<<16)
 #define GVRENDER_DOES_MAP_RECTANGLE (1<<17)
@@ -242,7 +242,7 @@ extern "C" {
 
 	/* primary mapped region - node shape, edge labels */
 	map_shape_t url_map_shape; 
-	int url_map_n;                  /* number of points for url map if GVRENDER_DOES_MAPS */
+	size_t url_map_n; // number of points for url map if GVRENDER_DOES_MAPS
 	pointf *url_map_p;
 
 	/* additional mapped regions for edges */

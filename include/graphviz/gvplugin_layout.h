@@ -1,3 +1,5 @@
+/// @file
+/// @ingroup plugin_api
 /*************************************************************************
  * Copyright (c) 2011 AT&T Intellectual Property 
  * All rights reserved. This program and the accompanying materials
@@ -18,6 +20,7 @@
 extern "C" {
 #endif
 
+    /// @ingroup plugin_api
     struct gvlayout_engine_s {
 	void (*layout) (graph_t * g);
 	void (*cleanup) (graph_t * g);
