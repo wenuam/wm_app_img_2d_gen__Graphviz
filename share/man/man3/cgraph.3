@@ -454,34 +454,36 @@ object labeled with the given ID is about to go out of existence.
 \fImap\fP is called to create or look-up IDs by string name
 (if supported by the ID manager).  Returning TRUE (nonzero)
 in all cases means that the request succeeded (with a valid
-ID stored through \f5result\fP.  There are four cases:
-.PP
-\fIname != NULL\fP and \f5createflag == 1\fP:
+ID stored through \fIresult\fP.  There are four cases:
+.RS
+.IP \[bu] 2
+\fIname != NULL\fP and \fIcreateflag == 1\fP:
 This requests mapping a string (e.g. a name in a graph file) into a new ID.
 If the ID manager can comply, then it stores the result and returns TRUE.
-It is then also responsible for being able to \f5print\fP the ID again
+It is then also responsible for being able to \fIprint\fP the ID again
 as a string.  Otherwise the ID manager may return FALSE but it must
 implement the following (at least for graph file reading and writing to work):
-.PP
-\f5name == NULL\fP and \f5createflag == 1\fP:
+.IP \[bu]
+\fIname == NULL\fP and \fIcreateflag == 1\fP:
 The ID manager creates a unique new ID of its own choosing. 
 Although it may return FALSE if it does not support anonymous objects,
 but this is strongly discouraged (to support "local names" in graph files.)
-.PP
-\f5name != NULL\fP and \f5createflag == 0\fP:
+.IP \[bu]
+\fIname != NULL\fP and \fIcreateflag == 0\fP:
 This is a namespace probe.  If the name was previously mapped into
 an allocated ID by the ID manager, then the manager must return this ID.
 Otherwise, the ID manager may either return FALSE, or may store
 any unallocated ID into result. (This is convenient, for example,
 if names are known to be digit strings that are directly converted into integer values.)
+.IP \[bu]
+\fIname == NULL\fP and \fIcreateflag == 0\fP: forbidden.
+.RE
 .PP
-\f5name == NULL\fP and \f5createflag == 0\fP: forbidden.
-.PP
-\f5print\fP is allowed to return a pointer to a static buffer;
+\fIprint\fP is allowed to return a pointer to a static buffer;
 a caller must copy its value if needed past subsequent calls.
-\f5NULL\fP should be returned by ID managers that do not map names.
+\fINULL\fP should be returned by ID managers that do not map names.
 .PP
-The \f5map\fP and \f5alloc\fP calls do not pass a pointer to the
+The \fImap\fP and \fIalloc\fP calls do not pass a pointer to the
 newly allocated object.  If a client needs to install object
 pointers in a handle table, it can obtain them via 
 new object callbacks.
@@ -573,9 +575,9 @@ type has higher priority than a programmer-controlled minimum, which is
 \fBagseterr\fP, which returns the previous value. Calling
 \fBagseterr(AGMAX)\fP turns off the writing of messages. 
 .PP
-The function \fBagerr\fP if the main entry point for reporting an
+The function \fBagerr\fP is the main entry point for reporting an
 anomaly. The first argument indicates the type of message. Usually,
-the first argument in \fBAGWARN\fP or \fBAGERR\fP to indicate warnings
+the first argument is \fBAGWARN\fP or \fBAGERR\fP to indicate warnings
 and errors, respectively. Sometimes additional context information is
 only available in functions calling the function where the error is
 actually caught. In this case, the calling function can indicate that
@@ -584,7 +586,7 @@ argument. The remaining arguments to \fBagerr\fP are the same as
 the arguments to \fBprintf\fP. 
 .PP
 The functions \fBagwarningf\fP and \fBagerrorf\fP are shorthand for
-\fBagerr(AGERR,...)\fP and \fBagerr(AGWARN,...)\fP, respectively.
+\fBagerr(AGWARN,...)\fP and \fBagerr(AGERR,...)\fP, respectively.
 .PP
 Some applications desire to directly control the writing of messages.
 Such an application can use the function \fBagseterrf\fP to register
@@ -593,7 +595,7 @@ The previous error function is returned. By default, the message is
 written to \fBstderr\fP.
 .PP
 Errors not written are stored in a log file. The last recorded error
-can be retreived by calling \fBaglasterr\fP.
+can be retrieved by calling \fBaglasterr\fP.
 Unless the printing of error messages has been completely disabled by a call
 to \fBagseterr(AGMAX)\fP, standard error must not be wide-oriented, even if
 a user-provided error printing function is provided.
@@ -601,46 +603,54 @@ a user-provided error printing function is provided.
 The function \fBagerrors\fP returns non-zero if errors have been reported. 
 .SH "EXAMPLE PROGRAM"
 .P0
-#include <stdio.h>
 #include <cgraph.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
 
-typedef struct {Agrec_t hdr; int x,y,z;} mydata;
+typedef struct {
+  Agrec_t hdr;
+  int x;
+  int y;
+  int z;
+} mydata;
 
-void main(int argc, char **argv)
-{
-    Agraph_t    *g, *h;
-    Agnode_t    *v;
-    Agedge_t    *e;
-    Agsym_t     *attr;
-    Dict_t      *d;
-    int         cnt;
+int main(int argc, char **argv) {
+  Agraph_t *g;
     mydata      *p;
 
-    if (g = agread(stdin,NIL(Agdisc_t*))) {
-        cnt = 0; attr = 0;
-        while (attr = agnxtattr(g, AGNODE, attr)) cnt++;
-        printf("The graph %s has %d attributes\\n",agnameof(g),cnt);
-
-        /* make the graph have a node color attribute, default is blue */
-        attr = agattr(g,AGNODE,"color","blue");
-
-        /* create a new graph of the same kind as g */
-        h = agopen("tmp",g->desc, NULL);
-
-        /* this is a way of counting all the edges of the graph */
-        cnt = 0;
-        for (v = agfstnode(g); v; v = agnxtnode(g,v))
-            for (e = agfstout(g,v); e; e = agnxtout(g,e))
-                cnt++;
-
-        /* attach records to edges */
-        for (v = agfstnode(g); v; v = agnxtnode(g,v))
-            for (e = agfstout(g,v); e; e = agnxtout(g,e)) {
-                p = (mydata*) agbindrec(e,"mydata",sizeof(mydata),TRUE);
-                p->x = 27;  /* meaningless data access example */
-                ((mydata*)(AGDATA(e)))->y = 999; /* another example */
-        }
+  if ((g = agread(stdin, NULL))) {
+    int cnt = 0;
+    Agsym_t *attr = NULL;
+    while ((attr = agnxtattr(g, AGNODE, attr))) {
+      cnt++;
     }
+    printf("The graph %s has %d attributes\\n", agnameof(g), cnt);
+
+    // make the graph have a node color attribute, default is blue
+    attr = agattr(g, AGNODE, "color", "blue");
+
+    // create a new graph of the same kind as g
+    Agraph_t *h = agopen("tmp", g->desc, NULL);
+
+    // this is a way of counting all the edges of the graph
+    cnt = 0;
+    for (Agnode_t *v = agfstnode(g); v != NULL; v = agnxtnode(g, v)) {
+      for (Agedge_t *e = agfstout(g, v); e != NULL; e = agnxtout(g, e)) {
+        cnt++;
+      }
+    }
+
+    // attach records to edges
+    for (Agnode_t *v = agfstnode(g); v != NULL; v = agnxtnode(g, v)) {
+      for (Agedge_t *e = agfstout(g, v); e != NULL; e = agnxtout(g, e)) {
+        p = (mydata *)agbindrec(e, "mydata", sizeof(mydata), true);
+        p->x = 27; // meaningless data access example
+        ((mydata *)(AGDATA(e)))->y = 999; // another example
+      }
+    }
+  }
+  return 0;
 }
 
 .P1

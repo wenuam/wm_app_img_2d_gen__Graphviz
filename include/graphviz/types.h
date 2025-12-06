@@ -2,6 +2,7 @@
  * @file
  * @brief graphs, nodes and edges info: Agraphinfo_t, Agnodeinfo_t and Agedgeinfo_t
  * @ingroup public_apis
+ * @ingroup common_render
  */
 
 /*************************************************************************
@@ -9,7 +10,7 @@
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * https://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors: Details at https://graphviz.org
  *************************************************************************/
@@ -35,8 +36,6 @@
 extern "C" {
 #endif
 
-    typedef int (*qsort_cmpf) (const void *, const void *);
-    typedef int (*bsearch_cmpf) (const void *, const void *);
     typedef struct Agraph_s graph_t;
     typedef struct Agnode_s node_t;
     typedef struct Agedge_s edge_t;
@@ -180,13 +179,6 @@ typedef union inside_t {
 
 #include "usershape.h"		/* usershapes needed by gvc */
 
-    typedef struct nodequeue {
-	node_t **store;
-	node_t **limit;
-	node_t **head;
-	node_t **tail;
-    } nodequeue;
-
     typedef struct adjmatrix_t adjmatrix_t;
 
     typedef struct rank_t {
@@ -314,7 +306,6 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 	/* connected components */
 	node_t *minset; /* set leaders */
 	node_t *maxset;	/* set leaders */
-	size_t n_nodes;
 	/* includes virtual */
 	int minrank;
 	int maxrank;
@@ -380,7 +371,6 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 #define GD_maxrep(g) (((Agraphinfo_t*)AGDATA(g))->maxrep)
 #define GD_move(g) (((Agraphinfo_t*)AGDATA(g))->move)
 #define GD_n_cluster(g) (((Agraphinfo_t*)AGDATA(g))->n_cluster)
-#define GD_n_nodes(g) (((Agraphinfo_t*)AGDATA(g))->n_nodes)
 #define GD_ndim(g) (((Agraphinfo_t*)AGDATA(g))->ndim)
 #define GD_odim(g) (((Agraphinfo_t*)AGDATA(g))->odim)
 #define GD_neato_nlist(g) (((Agraphinfo_t*)AGDATA(g))->neato_nlist)
