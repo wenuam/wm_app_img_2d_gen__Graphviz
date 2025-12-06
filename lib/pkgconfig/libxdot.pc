@@ -5,6 +5,6 @@ includedir=C:/Program Files/Graphviz/include
 
 Name: libxdot
 Description: Library for parsing graphs in xdot format
-Version: 11.0.0
+Version: 14.0.0
 Libs: -L${libdir} -lxdot
 Cflags: -I${includedir} -I${includedir}/graphviz

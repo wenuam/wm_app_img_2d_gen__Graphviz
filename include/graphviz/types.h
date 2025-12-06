@@ -81,7 +81,7 @@ extern "C" {
     typedef struct path {	/* internal specification for an edge spline */
 	port start;
 	port end;
-	int nbox;		/* number of subdivisions */
+	size_t nbox; ///< number of subdivisions
 	boxf *boxes;		/* rectangular regions of subdivision */
 	void *data;
     } path;
@@ -124,6 +124,22 @@ extern "C" {
 	bool html; /* true if html label */
     } textlabel_t;
 
+    typedef struct {
+	bool filled: 1;
+	bool radial: 1;
+	bool rounded: 1;
+	bool diagonals: 1;
+	bool auxlabels: 1;
+	bool invisible: 1;
+	bool striped: 1;
+	bool dotted: 1;
+	bool dashed: 1;
+	bool wedged: 1;
+	bool underline: 1;
+	bool fixedshape: 1;
+	unsigned shape: 7;
+    } graphviz_polygon_style_t;
+
     typedef struct polygon_t {	/* mutable shape information for a node */
 	int regular;		/* true for symmetric shapes */
 	size_t peripheries; ///< number of periphery lines
@@ -131,7 +147,7 @@ extern "C" {
 	double orientation;	/* orientation of shape (+ve degrees) */
 	double distortion;	/* distortion factor - as in trapezium */
 	double skew;		/* skew factor - as in parallelogram */
-	int option;		/* ROUNDED, DIAGONAL corners, etc. */
+	graphviz_polygon_style_t option; ///< ROUNDED, DIAGONAL corners, etc.
 	pointf *vertices;	/* array of vertex points */
     } polygon_t;
 
@@ -192,7 +208,7 @@ typedef union inside_t {
 	double pht2;	/* as above, but only primitive nodes   */
 	bool candidate;	/* for transpose () */
 	bool valid;
-	int cache_nc;		/* caches number of crossings */
+	int64_t cache_nc;		/* caches number of crossings */
 	adjmatrix_t *flat;
     } rank_t;
 
@@ -594,11 +610,11 @@ typedef enum {NATIVEFONTS,PSFONTS,SVGFONTS} fontname_kind;
 /// @ingroup cgraph_node
 #define agfindnode(g,n) (agnode(g,n,0))
 /// @ingroup cgraph_graph
-#define agfindgraphattr(g,a) (agattr(g,AGRAPH,a,NULL))
+#define agfindgraphattr(g,a) (agattr_text(g,AGRAPH,a,NULL))
 /// @ingroup cgraph_node
-#define agfindnodeattr(g,a) (agattr(g,AGNODE,a,NULL))
+#define agfindnodeattr(g,a) (agattr_text(g,AGNODE,a,NULL))
 /// @ingroup cgraph_edge
-#define agfindedgeattr(g,a) (agattr(g,AGEDGE,a,NULL))
+#define agfindedgeattr(g,a) (agattr_text(g,AGEDGE,a,NULL))
 
     typedef struct {
 	int flags;
