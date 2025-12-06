@@ -102,6 +102,9 @@ graph to be processed. This requires a read of the next graph before processing 
 current graph, which may block if the next graph is only generated in response to
 some action pertaining to the processing of the current graph.
 .TP
+.B \-v
+Enable verbose messages.
+.TP
 .B \-V
 Causes the program to print version information and exit.
 .TP
@@ -175,7 +178,7 @@ the associated node or edge is added to the target graph.
 The blocks are evaluated in the order in which they occur.
 Within a block, the \fBN\fP clauses 
 (\fBE\fP clauses, respectively) are evaluated in the
-order in which the occur. Note, though, that within a block, 
+order in which they occur. Note, though, that within a block, 
 \fBN\fP or \fBE\fP clauses may be interlaced, depending on the
 traversal order.
 .PP
@@ -374,12 +377,12 @@ returns the number of nodes in \fIg\fP.
 returns the number of edges in \fIg\fP.
 .SS "Nodes"
 .TP
-\fBnode\fP(\fIsg\fP : \fBgraph_t\fP, \fIs\fP : \fBstring\fP) : \fBnode_t\fP
+\fBnode\fP(\fIg\fP : \fBgraph_t\fP, \fIs\fP : \fBstring\fP) : \fBnode_t\fP
 creates a node in graph \fIg\fP of name \fIs\fP. If such a node
 already exists, it is returned.
 .TP
 \fBsubnode\fP(\fIsg\fP : \fBgraph_t\fP, \fIn\fP : \fBnode_t\fP) : \fBnode_t\fP
-inserts the node \fIn\fP into the subgraph \fIg\fP. Returns the node.
+inserts the node \fIn\fP into the subgraph \fIsg\fP. Returns the node.
 .TP
 \fBfstnode\fP(\fIg\fP : \fBgraph_t\fP) : \fBnode_t\fP
 returns the first node in graph \fIg\fP, or \fBNULL\fP if none exists.
@@ -406,6 +409,9 @@ returns the outdegree of node \fIn\fP in (sub)graph \fIsg\fP.
 .TP
 \fBdegreeOf\fP(\fIsg\fP : \fBgraph_t\fP, \fIn\fP : \fBnode_t\fP) : \fBint\fP
 returns the degree of node \fIn\fP in (sub)graph \fIsg\fP.
+.TP
+\fBrename\fP(\fIn\fP : \fBnode_t\fP, \fInewname\fP : \fBstring\fP) : \fBint\fP
+changes the name of \fIn\fP to \fInewname\fP and returns 0 on success or -1 if there is an existing node with that name. 
 .SS "Edges"
 .TP
 \fBedge\fP(\fIt\fP : \fBnode_t\fP, \fIh\fP : \fBnode_t\fP, \fIs\fP : \fBstring\fP) : \fBedge_t\fP
@@ -435,7 +441,7 @@ name \fIs\fP in (sub)graph \fIsg\fP. If the graph is undirected, the distinction
 head and tail nodes is unimportant.
 If such an edge exists, it is returned. Otherwise, \fBNULL\fP is returned.
 .TP
-\fBisSubedge\fP(\fIg\fP : \fBgraph_t\fP, \fIe\fP : \fBedge_t\fP) : \fBint\fP
+\fBisSubedge\fP(\fIsg\fP : \fBgraph_t\fP, \fIe\fP : \fBedge_t\fP) : \fBint\fP
 returns non-zero if edge \fIe\fP is in (sub)graph \fIsg\fP, or zero
 otherwise.
 .TP
@@ -469,13 +475,13 @@ returns the first edge of node \fIn\fP in the root graph.
 \fBfstedge_sg\fP(\fIsg\fP : \fBgraph_t\fP, \fIn\fP : \fBnode_t\fP) : \fBedge_t\fP
 returns the first edge of node \fIn\fP in graph \fIsg\fP.
 .TP
-\fBnxtedge\fP(\fIe\fP : \fBedge_t\fP, \fBnode_t\fP) : \fBedge_t\fP
+\fBnxtedge\fP(\fIe\fP : \fBedge_t\fP, \fIn\fP : \fBnode_t\fP) : \fBedge_t\fP
 returns the next edge after \fIe\fP in the root graph.
 .TP
-\fBnxtedge_sg\fP(\fIsg\fP : \fBgraph_t\fP, \fIe\fP : \fBedge_t\fP, \fBnode_t\fP) : \fBedge_t\fP
+\fBnxtedge_sg\fP(\fIsg\fP : \fBgraph_t\fP, \fIe\fP : \fBedge_t\fP, \fIn\fP : \fBnode_t\fP) : \fBedge_t\fP
 returns the next edge after \fIe\fP in the graph \fIsg\fP.
 .TP
-\fBopp\fP(\fIe\fP : \fBedge_t\fP, \fBnode_t\fP) : \fBnode_t\fP
+\fBopp\fP(\fIe\fP : \fBedge_t\fP, \fIn\fP : \fBnode_t\fP) : \fBnode_t\fP
 returns the node on the edge \fIe\fP not equal to \fIn\fP.
 Returns NULL if \fIn\fP is not a node of \fIe\fP.
 This can be useful when using \fBfstedge\fP and \fBnxtedge\fP
@@ -921,7 +927,7 @@ depth\(hyfirst or breadth\(hyfirst traversal of the
 graph (cf. \fB$tvtype\fP below).
 The default value is \fBNULL\fP for each input graph.
 After the traversal at the given root, if the value of \fB$tvroot\fP has changed,
-a new traversal will begin with the new value of \fB$tvroot\fP. Also, set \fB$tvnext\fP below.
+a new traversal will begin with the new value of \fB$tvroot\fP. Also, see \fB$tvnext\fP below.
 .TP
 \fB$tvnext\fP : \fBnode_t\fP
 indicates the next starting node for a (directed or undirected)
@@ -1067,15 +1073,6 @@ END { printf ("%d nodes %d edges total\\n", tot_n, tot_e) }\fP
 .DT
 .PP
 Version of the program \fBgc\fP.
-.PP
-.RS
-.nf
-\fBgvpr \-c ""\fP
-.fi
-.RE
-.DT
-.PP
-Equivalent to \fBnop\fP.
 .PP
 .RS
 .nf

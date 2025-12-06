@@ -15,6 +15,7 @@
 
 #include "cdt.h"
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,7 +58,8 @@ extern "C" {
 	FILE *f;
 	imagetype_t type;
 	char *stringtype;
-	int x, y, w, h, dpi;
+	double x, y, w, h;
+	int dpi;
 	void *data;                   /* data loaded by a renderer */
 	size_t datasize;              /* size of data (if mmap'ed) */
 	void (*datafree)(usershape_t *us); /* renderer's function for freeing data */

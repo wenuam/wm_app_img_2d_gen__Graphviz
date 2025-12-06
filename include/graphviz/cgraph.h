@@ -8,7 +8,7 @@
  * Graphs are composed of nodes, edges, and nested subgraphs.
  * These graph objects may be attributed with string name-value pairs
  * and programmer-defined records (see Attributes).
- * All of Libcgraph’s global symbols have the prefix **ag** (case varying).
+ * Most of Libcgraph’s global symbols have the prefix **ag** (case varying).
  * In the following, if a function has a parameter `int createflag` and
  * the object does not exist, the function will create the specified object
  * if `createflag` is non-zero; otherwise, it will return NULL.
@@ -241,9 +241,9 @@ struct Agobj_s {
 /** @brief This is the node struct allocated per graph (or subgraph).
 
 It resides in the n_dict of the graph.
-The node set is maintained by libdict, but transparently to libgraph callers.
+The node set is maintained by libcdt, but transparently to libcgraph callers.
 Every node may be given an optional string name at its time of creation,
-or it is permissible to pass NIL(char*) for the name. */
+or it is permissible to pass NULL for the name. */
 
 struct Agsubnode_s { /* the node-per-graph-or-subgraph record */
   Dtlink_t seq_link; /* must be first */
@@ -291,12 +291,12 @@ struct Agdesc_s {         /* graph descriptor */
 
 /** @defgroup cgraph_disc disciplines
  *  @ingroup cgraph_misc
- *  @brief disciplines for external resources needed by libgraph
+ *  @brief disciplines for external resources needed by libcgraph
  *
  *  (This section is not intended for casual users.)
  *
  *  Programmer-defined disciplines customize certain resources:
- *  ID namespace, memory, and I/O - needed by Libcgraph.
+ *  ID namespace and I/O - needed by Libcgraph.
  *  A discipline struct (or NULL) is passed at graph creation time.
  *  @{
  */
@@ -313,7 +313,6 @@ struct Agdesc_s {         /* graph descriptor */
 struct Agiddisc_s {
   void *(*open)(Agraph_t *g, Agdisc_t *); /* associated with a graph */
   long (*map)(void *state, int objtype, char *str, IDTYPE *id, int createflag);
-  long (*alloc)(void *state, int objtype, IDTYPE id);
   void (*free)(void *state, int objtype, IDTYPE id);
   char *(*print)(void *state, int objtype, IDTYPE id);
   void (*close)(void *state);
@@ -408,12 +407,15 @@ CGRAPH_API int agpopdisc(Agraph_t *g, Agcbdisc_t *disc);
 struct Agclos_s {
   Agdisc_t disc;    /* resource discipline functions */
   Agdstate_t state; /* resource closures */
-  Dict_t *strdict;  /* shared string dict */
+  void *strdict;    ///< shared string dict
   uint64_t seq[3];  /* local object sequence number counter */
   Agcbstack_t *cb;  /* user and system callback function stacks */
   Dict_t *lookup_by_name[3];
   Dict_t *lookup_by_id[3];
 };
+
+/// opaque type; the definition of this is internal to Graphviz
+struct graphviz_node_set;
 
 /// graph or subgraph
 struct Agraph_s {
@@ -421,12 +423,12 @@ struct Agraph_s {
   Agdesc_t desc;
   Dtlink_t seq_link;
   Dtlink_t id_link;
-  Dict_t *n_seq;           /* the node set in sequence */
-  Dict_t *n_id;            /* the node set indexed by ID */
-  Dict_t *e_seq, *e_id;    /* holders for edge sets */
-  Dict_t *g_seq, *g_id;    /* subgraphs - descendants */
-  Agraph_t *parent, *root; /* subgraphs - ancestors */
-  Agclos_t *clos;          /* shared resources */
+  Dict_t *n_seq;                  ///< the node set in sequence
+  struct graphviz_node_set *n_id; ///< the node set indexed by ID
+  Dict_t *e_seq, *e_id;           ///< holders for edge sets
+  Dict_t *g_seq, *g_id;           ///< subgraphs - descendants
+  Agraph_t *parent, *root;        ///< subgraphs - ancestors
+  Agclos_t *clos;                 ///< shared resources
 };
 
 /* graphs */
@@ -439,7 +441,7 @@ CGRAPH_API Agraph_t *agopen(char *name, Agdesc_t desc, Agdisc_t *disc);
  * A strict graph cannot have multi-edges or self-arcs.
  *
  * @param disc - discipline structure which can be used
- * to tailor I/O, memory allocation, and ID allocation. Typically, a NULL
+ * to tailor I/O and ID allocation. Typically, a NULL
  * value will be used to indicate the default discipline @ref AgDefaultDisc.
  */
 
@@ -452,19 +454,17 @@ CGRAPH_API Agraph_t *agmemread(const char *cp);
 ///< reads a graph from the input string
 
 CGRAPH_API Agraph_t *agmemconcat(Agraph_t *g, const char *cp);
-CGRAPH_API void agreadline(int);
-///< sets input line number for subsequent error reporting
 
-CGRAPH_API void agsetfile(const char *);
-///< sets the current file name for subsequent error reporting
-
-CGRAPH_API Agraph_t *agconcat(Agraph_t *g, void *chan, Agdisc_t *disc);
+CGRAPH_API Agraph_t *agconcat(Agraph_t *g, const char *filename, void *chan,
+                              Agdisc_t *disc);
 /**< @brief merges the file contents with a pre-existing graph
  *
  * Though I/O methods may be overridden, the default is that
  * the channel argument is a stdio FILE pointer.
  * In that case, if any of the streams are wide-oriented,
  * the behavior is undefined.
+ *
+ * @param filename Path of the input file source, used only for diagnostics
  */
 
 CGRAPH_API int agwrite(Agraph_t *g, void *chan);
@@ -564,38 +564,41 @@ CGRAPH_API int agobjkind(void *obj);
  * All uses of cgraph strings need to be freed using @ref agstrfree
  * in order to correctly maintain the reference count.
  *
- * @ref agcanonStr returns a pointer to a version of the input string
- * canonicalized for output for later re-parsing.
- * This includes quoting special characters and keywords.
- * It uses its own internal buffer, so the value will be lost on
- * the next call to @ref agcanonStr.
- * @ref agcanon is identical with @ref agcanonStr
- * except it can be used with any character string.
- * The second argument indicates whether or not the string
- * should be canonicalized as an HTML-like string.
- *
  * @{
  */
 CGRAPH_API char *agstrdup(Agraph_t *, const char *);
 ///< @brief returns a pointer to a reference-counted copy of the argument
-///< string,
-/// creating one if necessary
+///< string, creating one if necessary
+///
+/// Use of this function should be avoided where possible. It is not possible to
+/// explicitly indicate whether the caller is trying to create a regular text
+/// string or an HTML-like string. It is better to be explicit with your intent
+/// and instead call either @ref agstrdup_text or @ref agstrdup_html.
+
+CGRAPH_API char *agstrdup_text(Agraph_t *, const char *);
+///< @brief returns a pointer to a reference-counted regular text copy of the
+///< argument string, creating one if necessary
 
 CGRAPH_API char *agstrdup_html(Agraph_t *, const char *);
-///< create an HTML-like string
-///
+///< @brief returns a pointer to a reference-counted HTML-like copy of the
+///< argument string, creating one if necessary
+
 CGRAPH_API int aghtmlstr(const char *);
 ///< query if a string is an ordinary string or an HTML-like string
 ///
-CGRAPH_API int aghtmlstr(const char *);
 CGRAPH_API char *agstrbind(Agraph_t *g, const char *);
 ///< returns a pointer to a reference-counted string if it exists, or NULL if
 ///< not
+CGRAPH_API char *agstrbind_text(Agraph_t *g, const char *);
+///< returns a pointer to a reference-counted regular text string if it exists,
+///< or NULL if not
+CGRAPH_API char *agstrbind_html(Agraph_t *g, const char *);
+///< returns a pointer to a reference-counted HTML-like string if it exists, or
+///< NULL if not
 
-CGRAPH_API int agstrfree(Agraph_t *, const char *);
-CGRAPH_API char *agcanon(char *str, int html);
+CGRAPH_API int agstrfree(Agraph_t *, const char *, bool is_html);
+///< @param is_html Is the string being freed an HTML-like string?
 CGRAPH_API char *agstrcanon(char *, char *);
-CGRAPH_API char *agcanonStr(char *str); /* manages its own buf */
 /// @}
 
 /** @defgroup cgraph_attr attributes
@@ -604,9 +607,9 @@ CGRAPH_API char *agcanonStr(char *str); /* manages its own buf */
  *
  * Programmer-defined values may be dynamically
  * attached to graphs, subgraphs, nodes, and edges.
- * Such values are either character string data (see @ref agattr) (for I/O)
- * or uninterpreted binary @ref cgraph_rec (for implementing algorithms
- * efficiently).
+ * Such values are either character string data (see @ref agattr_text,
+ * @ref agattr_html, and @ref agattr) (for I/O) or uninterpreted binary
+ * @ref cgraph_rec (for implementing algorithms efficiently).
  *
  * *String attributes* are handled automatically in reading and writing graph
  * files. A string attribute is identified by name and by an internal symbol
@@ -639,6 +642,8 @@ struct Agsym_s {
   unsigned char kind;  /* referent object type */
   unsigned char fixed; /* immutable value */
   unsigned char print; /* always print */
+  Agraph_t *owner; ///< graph from whose string pool `name` and `defval` were
+                   ///< allocated
 };
 
 struct Agdatadict_s { ///< set of dictionaries per graph
@@ -648,9 +653,13 @@ struct Agdatadict_s { ///< set of dictionaries per graph
   } dict;
 };
 
-CGRAPH_API Agsym_t *agattr(Agraph_t *g, int kind, char *name,
-                           const char *value);
-/**< @brief creates or looks up attributes of a graph
+CGRAPH_API Agsym_t *agattr_text(Agraph_t *g, int kind, char *name,
+                                const char *value);
+/**< @brief creates or looks up text attributes of a graph
+ *
+ * HTML-like attributes cannot be created or looked up with this function. See
+ * @ref agattr_html for that.
+ *
  * @param g graph. When is NULL, the default is set for all graphs created
  * subsequently.
  * @param kind may be @ref AGRAPH, @ref AGNODE, or @ref AGEDGE.
@@ -663,6 +672,45 @@ CGRAPH_API Agsym_t *agattr(Agraph_t *g, int kind, char *name,
  * given default **value**, and the default is applied to all pre-existing
  * objects of the given **kind**
  */
+
+CGRAPH_API Agsym_t *agattr_html(Agraph_t *g, int kind, char *name,
+                                const char *value);
+///< @brief `agattr_text`, but creates HTML-like values
+///
+/// Regular text attributes cannot be created or looked up with this function.
+/// See @ref agattr_text for that.
+///
+/// @param g Graph. When `g` is `NULL`, the default is set for all graphs
+///   created subsequently.
+/// @param kind May be @ref AGRAPH, @ref AGNODE, or @ref AGEDGE.
+/// @param value Default value. When `value` is `NULL`, the request is to search
+///   for an existing attribute of the given kind and name.
+///
+/// If the attribute already exists, its default for creating new objects is set
+/// to the given `value`; if it does not exist, a new attribute is created with
+/// the given default `value`, and the default is applied to all pre-existing
+/// objects of the given `kind`.
+
+CGRAPH_API Agsym_t *agattr(Agraph_t *g, int kind, char *name,
+                           const char *value);
+///< @brief creates or looks up an attribute, without specifying desired form
+///
+/// Use of this function should be avoided where possible. It is not possible to
+/// explicitly indicate whether the caller is trying to create/lookup a regular
+/// text attribute or an HTML-like attribute. It is better to be explicit with
+/// your intent and instead call either @ref agattr_text or @ref agattr_html.
+///
+/// This function has the following behavior:
+///   1. If the `value` passed was obtained from `agstrdup_html`, an HTML-like
+///      attribute value is created/looked up. That is, the behavior is
+///      equivalent to a call to @ref agattr_html.
+///   2. Otherwise, a regular text attribute value is created/looked up.
+///
+/// @param g graph. When is NULL, the default is set for all graphs created
+///   subsequently.
+/// @param kind may be @ref AGRAPH, @ref AGNODE, or @ref AGEDGE.
+/// @param value default value. When is @ref NULL, the request is to search for
+///   for an existing attribute of the given kind and name.
 
 CGRAPH_API Agsym_t *agattrsym(void *obj, char *name);
 ///< looks up a string attribute for a graph object given as an argument
@@ -711,11 +759,67 @@ CGRAPH_API void agclean(Agraph_t *g, int kind, char *rec_name);
 CGRAPH_API char *agget(void *obj, char *name);
 CGRAPH_API char *agxget(void *obj, Agsym_t *sym);
 CGRAPH_API int agset(void *obj, char *name, const char *value);
+CGRAPH_API int agset_text(void *obj, char *name, const char *value);
+CGRAPH_API int agset_html(void *obj, char *name, const char *value);
 CGRAPH_API int agxset(void *obj, Agsym_t *sym, const char *value);
+CGRAPH_API int agxset_text(void *obj, Agsym_t *sym, const char *value);
+CGRAPH_API int agxset_html(void *obj, Agsym_t *sym, const char *value);
+
+CGRAPH_API int agsafeset_text(void *obj, char *name, const char *value,
+                              const char *def);
+///< @brief set an attribute’s value and default, ensuring it is declared before
+///   setting it locally
+///
+/// The attribue set by this function is a regular text attribute. See
+/// @ref agsafeset_html for the equivalent for an HTML-like attribute.
+///
+/// @param obj Object on which to set the attribute
+/// @param name Name of the attribute to set
+/// @param value Value of the attribute to set
+/// @param def Optional default to declare for the attribute
+
+CGRAPH_API int agsafeset_html(void *obj, char *name, const char *value,
+                              const char *def);
+///< @brief set an attribute’s value and default, ensuring it is declared before
+///   setting it locally
+///
+/// The attribue set by this function is an HTML-like attribute. See
+/// @ref agsafeset_text for the equivalent for a regular text attribute.
+///
+/// @param obj Object on which to set the attribute
+/// @param name Name of the attribute to set
+/// @param value Value of the attribute to set
+/// @param def Optional default to declare for the attribute
+
 CGRAPH_API int agsafeset(void *obj, char *name, const char *value,
                          const char *def);
-///< @brief ensures the given attribute is declared
-///  before setting it locally on an object
+///< @brief set an attribute’s value and default, ensuring it is declared before
+///   setting it locally
+///
+/// Use of this function should be avoided where possible. It is not possible to
+/// explicitly indicate whether the caller is trying to create/lookup a regular
+/// text attribute or an HTML-like attribute. It is better to be explicit with
+/// your intent and instead call either @ref agsafeset_text or
+/// @ref agsafeset_html.
+///
+/// This function has the following behavior:
+///   1. If the attribute needs to be created (it did not already exist) and
+///      `def` was obtained from `agstrdup_html`, an HTML-like default attribute
+///      value is created.
+///   2. If the attribute needs to be created (it did not already exist) and
+///      `def` was not obtained from `agstrdup_html`, a regular text default
+///      attribute value is created.
+///   … then …
+///   1. If the `value` passed was obtained from `agstrdup_html`, an HTML-like
+///      attribute value is created/looked up. That is, the behavior is
+///      equivalent to a call to @ref agsafeset_html.
+///   2. Otherwise, a regular text attribute value is created/looked up. That
+///      is, the behavior is equivalent to a call to @ref agsafeset_text.
+///
+/// @param obj Object on which to set the attribute
+/// @param name Name of the attribute to set
+/// @param value Value of the attribute to set
+/// @param def Optional default to declare for the attribute
 
 /// @}
 
@@ -747,9 +851,8 @@ CGRAPH_API int agsafeset(void *obj, char *name, const char *value,
  */
 
 CGRAPH_API Agraph_t *agsubg(Agraph_t *g, char *name,
-                            int cflag); /* constructor */
-CGRAPH_API Agraph_t *agidsubg(Agraph_t *g, IDTYPE id,
-                              int cflag); /* constructor */
+                            int cflag);                /* constructor */
+CGRAPH_API Agraph_t *agidsubg(Agraph_t *g, IDTYPE id); ///< constructor
 CGRAPH_API Agraph_t *agfstsubg(Agraph_t *g);
 CGRAPH_API Agraph_t *agnxtsubg(Agraph_t *subg);
 CGRAPH_API Agraph_t *agparent(Agraph_t *g);
@@ -784,19 +887,6 @@ CGRAPH_API int agnedges(Agraph_t *g);
 CGRAPH_API int agnsubg(Agraph_t *g);
 CGRAPH_API int agdegree(Agraph_t *g, Agnode_t *n, int in, int out);
 CGRAPH_API int agcountuniqedges(Agraph_t *g, Agnode_t *n, int in, int out);
-/// @}
-
-/// @defgroup cgmem memory
-/// @{
-CGRAPH_API void *agalloc(Agraph_t *g, size_t size);
-CGRAPH_API void *agrealloc(Agraph_t *g, void *ptr, size_t oldsize, size_t size);
-CGRAPH_API void agfree(Agraph_t *g, void *ptr);
-
-/* an engineering compromise is a joy forever */
-CGRAPH_API void aginternalmapclearlocalnames(Agraph_t *g);
-
-#define agnew(g, t) ((t *)agalloc(g, sizeof(t)))
-#define agnnew(g, n, t) ((t *)agalloc(g, (n) * sizeof(t)))
 /// @}
 
 /// @cond
@@ -870,7 +960,7 @@ CGRAPH_API agusererrf agseterrf(agusererrf);
 /// @{
 /* data access macros */
 /* this assumes that e[0] is out and e[1] is inedge, see @ref Agedgepair_s  */
-#define AGIN2OUT(inedge) ((inedge)-1) ///< Agedgepair_s.in -> Agedgepair_s.out
+#define AGIN2OUT(inedge) ((inedge) - 1) ///< Agedgepair_s.in -> Agedgepair_s.out
 #define AGOUT2IN(outedge)                                                      \
   ((outedge) + 1) ///< Agedgepair_s.out -> Agedgepair_s.in
 #define AGOPP(e) ((AGTYPE(e) == AGINEDGE) ? AGIN2OUT(e) : AGOUT2IN(e))
@@ -908,10 +998,6 @@ CGRAPH_API extern Agdesc_t Agstrictundirected; ///< strict undirected
 both nodes and edges are embedded in main graph objects but allocated separately
 in subgraphs */
 #define AGSNMAIN(sn) ((sn) == (&((sn)->node->mainsub)))
-#define EDGEOF(sn, rep)                                                        \
-  (AGSNMAIN(sn)                                                                \
-       ? ((Agedge_t *)((unsigned char *)(rep)-offsetof(Agedge_t, seq_link)))   \
-       : ((Dthold_t *)(rep))->obj)
 /// @}
 
 /// @addtogroup cgraph_app

@@ -34,7 +34,6 @@ Agcbdisc_t;
 .P1
 .SS "GLOBALS"
 .P0
-Agmemdisc_t AgMemDisc;
 Agiddisc_t  AgIdDisc;
 Agiodisc_t  AgIoDisc;
 Agdisc_t    AgDefaultDisc;
@@ -45,9 +44,7 @@ Agraph_t	*agopen(char *name, Agdesc_t kind, Agdisc_t *disc);
 int		agclose(Agraph_t *g);
 Agraph_t	*agread(void *channel, Agdisc_t *);
 Agraph_t	*agmemread(char *);
-void		agreadline(int line_no);
-void		agsetfile(char *file_name);
-Agraph_t	*agconcat(Agraph_t *g, void *channel, Agdisc_t *disc)
+Agraph_t	*agconcat(Agraph_t *g, const char *filename, void *channel, Agdisc_t *disc);
 int		agwrite(Agraph_t *g, void *channel);
 int		agnnodes(Agraph_t *g),agnedges(Agraph_t *g), agnsubg(Agraph_t * g);
 int		agisdirected(Agraph_t * g),agisundirected(Agraph_t * g),agisstrict(Agraph_t * g), agissimple(Agraph_t * g); 
@@ -92,7 +89,7 @@ Agedge_t	*agopp(Agedge_t *e);
 int		ageqedge(Agedge_t *e0, Agedge_t *e1);
 .SS "STRING ATTRIBUTES"
 .P0
-Agsym_t	*agattr(Agraph_t *g, int kind, char *name, const char *value);
+Agsym_t	*agattr_text(Agraph_t *g, int kind, char *name, const char *value);
 Agsym_t	*agattrsym(void *obj, char *name);
 Agsym_t	*agnxtattr(Agraph_t *g, int kind, Agsym_t *attr);
 char		*agget(void *obj, char *name);
@@ -116,12 +113,6 @@ int			*agpopdisc(Agraph_t *g);
 void		agpushdisc(Agraph_t *g, Agcbdisc_t *disc);
 int			agcallbacks(Agraph_t * g, int flag);
 .P1
-.SS "MEMORY"
-.P0
-void		*agalloc(Agraph_t *g, size_t request);
-void		*agrealloc(Agraph_t *g, void *ptr, size_t oldsize, size_t newsize);
-void		agfree(Agraph_t *g, void *ptr);
-.P1
 .SS "STRINGS"
 .P0
 char		*agstrdup(Agraph_t *, char *);
@@ -129,9 +120,7 @@ char		*agstrdup_html(Agraph_t *, char *);
 int		aghtmlstr(char *);
 char		*agstrbind(Agraph_t * g, char *);
 int		strfree(Agraph_t *, char *);
-char		*agcanonStr(char *);
 char		*agstrcanon(char *, char *);
-char		*agcanon(char *, int);
 .P1
 .SS "GENERIC OBJECTS"
 .P0
@@ -181,7 +170,7 @@ Objects may be named by unique strings or by integer IDs.
 \fBAgstrictdirected\fP, and \fBAgstrictundirected\fP.
 A strict graph cannot have multi-edges or self-arcs.)
 The final argument points to a discpline structure which can be used
-to tailor I/O, memory allocation, and ID allocation. Typically, a NULL
+to tailor I/O and ID allocation. Typically, a NULL
 value will be used to indicate the default discipline \fBAgDefaultDisc\fP.
 \fBagclose\fP deletes a graph, freeing its associated storage.
 \fBagread\fP, \fBagwrite\fP, and \fBagconcat\fP perform file I/O 
@@ -192,9 +181,6 @@ be overridden, the default is that the channel argument is
 a stdio FILE pointer. In that case, if any of the streams are
 wide-oriented, the behavior is undefined.
 \fBagmemread\fP attempts to read a graph from the input string.
-\fBagsetfile\fP and \fBagreadline\fP
-are helper functions that simply set the current file name
-and input line number for subsequent error reporting.
 .PP
 The functions \fBagisdirected\fP, \fBagisundirected\fP, \fBagisstrict\fP, and \fBagissimple\fP
 can be used to query if a graph is directed, undirected, strict (at most one edge with a given tail
@@ -346,19 +332,13 @@ an HTML-like string, use \fBagstrdup_html\fP. The \fBaghtmlstr\fP
 function can be used to query if a string is an ordinary string or
 an HTML-like string.
 .PP
-\fBagcanonStr\fP returns a pointer to a version of the input string
+\fBagstrcanon\fP returns a pointer to a version of the input string
 canonicalized for output for later re-parsing. This includes quoting
-special characters and keywords. It uses its own internal buffer, so
-the value will be lost on the next call to \fBagcanonStr\fP.
-\fBagstrcanon\fP is an unsafe version of \fBagcanonStr\fP, in which
-the application passes in a buffer as the second argument. Note that
-the buffer may not be used; if the input string is in canonical form,
-the function will just return a pointer to it.
-For both of the functions, the input string must have been created using
+special characters and keywords. The application passes in a buffer as the
+second argument. Note that the buffer may not be used; if the input string is in
+canonical form, the function will just return a pointer to it.
+The input string must have been created using
 \fBagstrdup\fP or \fBagstrdup_html\fP.
-Finally, \fBagcanonStr\fP is identical with \fBagcanonStr\fP
-except it can be used with any character string. The second argument indicates
-whether or not the string should be canonicalized as an HTML-like string.
 .SH "RECORDS"
 Uninterpreted records may be attached to graphs, subgraphs, nodes,
 and edges for efficient operations on values such as marks, weights,
@@ -408,12 +388,11 @@ The lock can be subsequently released or reset by a call to \fBaggetrec\fP.
 .SH "DISCIPLINES"
 (This section is not intended for casual users.)
 Programmer-defined disciplines customize certain resources-
-ID namespace, memory, and I/O - needed by Libcgraph.
+ID namespace and I/O - needed by Libcgraph.
 A discipline struct (or NULL) is passed at graph creation time.
 .PP
 .P0
 struct Agdisc_s {            /* user's discipline */
-    Agmemdisc_t            *mem;
     Agiddisc_t            *id;
     Agiodisc_t            *io;
 } ;
@@ -503,37 +482,6 @@ an application may need to use a totally different type of character source. The
 state or stream information is provided by the \fIchan\fP argument to \fBagread\fP or \fBagwrite\fP.
 The discipline function \fIfread\fP and \fIputstr\fP provide the corresponding functions for
 read and writing.
-
-.SH "MEMORY DISCIPLINE"
-Memory management in Libcgraph is handled on a per graph basis using the memory discipline.
-.P0
-struct Agmemdisc_s {    /* memory allocator */
-    void    *(*open)(Agdisc_t*);        /* independent of other resources */
-    void    *(*alloc)(void *state, size_t req);
-    void    *(*resize)(void *state, void *ptr, size_t old, size_t req);
-    void    (*free)(void *state, void *ptr);
-    void    (*close)(void *state);
-} ;
-.P1
-.PP
-The \fBopen\fP function is used to initialize the memory subsystem,
-returning state information that is passed to the calls to  
-\fBalloc\fP, \fBresize\fP, and \fBfree\fP.
-The semantics of these should be comparable to the standard C library functions
-\fBmalloc\fP, \fBrealloc\fP, and \fBfree\fP, except that new space created by \fBagalloc\fP 
-and \fBagrealloc\fP should be zeroed out.
-The \fBclose\fP function is used to terminate the memory subsystem, freeing any additional
-open resources.
-For actual allocation, the library uses the functions
-\fBagalloc\fP, \fBagrealloc\fP, and \fBagfree\fP, which provide simple wrappers for
-the underlying discipline functions \fBalloc\fP, \fBresize\fP, and \fBfree\fP.
-.PP
-When Libcgraph is compiled with Vmalloc (which is not the default),
-each graph has its own heap.
-Programmers may allocate application-dependent data within the
-same heap as the rest of the graph.  The advantage is that
-a graph can be deleted by atomically freeing its entire heap
-without scanning each individual node and edge.
 
 .SH "CALLBACKS"
 .PP
@@ -628,7 +576,7 @@ int main(int argc, char **argv) {
     printf("The graph %s has %d attributes\\n", agnameof(g), cnt);
 
     // make the graph have a node color attribute, default is blue
-    attr = agattr(g, AGNODE, "color", "blue");
+    attr = agattr_text(g, AGNODE, "color", "blue");
 
     // create a new graph of the same kind as g
     Agraph_t *h = agopen("tmp", g->desc, NULL);

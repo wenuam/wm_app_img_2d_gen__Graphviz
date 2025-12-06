@@ -50,14 +50,7 @@ typedef struct { pointf LL, UR; } boxf;
 /* true if box b0 completely contains b1*/
 #define CONTAINS(b0,b1)	(((b0).UR.x >= (b1).UR.x) && ((b0).UR.y >= (b1).UR.y) && ((b0).LL.x <= (b1).LL.x) && ((b0).LL.y <= (b1).LL.y))
 
-/* expand box b as needed to enclose point p */
-#define EXPANDBP(b, p)	((b).LL.x = MIN((b).LL.x, (p).x), (b).LL.y = MIN((b).LL.y, (p).y), (b).UR.x = MAX((b).UR.x, (p).x), (b).UR.y = MAX((b).UR.y, (p).y))
-
-/* expand box b0 as needed to enclose box b1 */
-#define EXPANDBB(b0, b1) ((b0).LL.x = MIN((b0).LL.x, (b1).LL.x), (b0).LL.y = MIN((b0).LL.y, (b1).LL.y), (b0).UR.x = MAX((b0).UR.x, (b1).UR.x), (b0).UR.y = MAX((b0).UR.y, (b1).UR.y))
-
 #define LEN2(a,b)		(SQR(a) + SQR(b))
-#define LEN(a,b)		(sqrt(LEN2((a),(b))))
 
 #define DIST2(p,q)		(LEN2(((p).x - (q).x),((p).y - (q).y)))
 #define DIST(p,q)		(sqrt(DIST2((p),(q))))
@@ -74,7 +67,6 @@ typedef struct { pointf LL, UR; } boxf;
 #define PF2P(pf,p)		((p).x = ROUND((pf).x),(p).y = ROUND((pf).y))
 
 #define B2BF(b,bf)		(P2PF((b).LL,(bf).LL),P2PF((b).UR,(bf).UR))
-#define BF2B(bf,b)		(PF2P((bf).LL,(b).LL),PF2P((bf).UR,(b).UR))
 
 #define APPROXEQPT(p,q,tol)	(DIST2((p),(q)) < SQR(tol))
 

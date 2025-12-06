@@ -52,8 +52,8 @@ extern "C" {
 
  GVDEVICE_DOES_PAGES		provides pagination support -Tps	
  GVDEVICE_DOES_LAYERS		provides support for layers -Tps	
- GVDEVICE_EVENTS		supports mouse events -Tgtk, -Txlib	
- GVDEVICE_DOES_TRUECOLOR	supports alpha channel -Tpng, -Tgtk, -Txlib 
+ GVDEVICE_EVENTS		supports mouse events -Txlib	
+ GVDEVICE_DOES_TRUECOLOR	supports alpha channel -Tpng, -Txlib
  GVDEVICE_BINARY_FORMAT		Suppresses \r\n substitution for linends 
  GVDEVICE_COMPRESSED_FORMAT	controls libz compression		
  GVDEVICE_NO_WRITER		used when gvdevice is not used because device uses its own writer, devil outputs   (FIXME seems to overlap OUTPUT_NOT_REQUIRED)
@@ -193,7 +193,7 @@ extern "C" {
 
 	gvcolor_t pencolor, fillcolor, stopcolor;
 	int gradient_angle;
-	float gradient_frac;
+	double gradient_frac;
 	pen_type pen;
 	fill_type fill;
 	double penwidth;
@@ -276,8 +276,8 @@ extern "C" {
 	const char *output_filename;
 	FILE *output_file;
 	char *output_data;
-	unsigned int output_data_allocated;
-	unsigned int output_data_position;
+	size_t output_data_allocated;
+	size_t output_data_position;
 
 	const char *output_langname;
 	int output_lang;
@@ -294,7 +294,7 @@ extern "C" {
 
 	void *context;		/* gd or cairo surface */
 	bool external_context;	/* context belongs to caller */
-	char *imagedata;	/* location of imagedata */
+	unsigned char *imagedata; ///< location of imagedata
 
         int flags;		/* emit_graph flags */
 
